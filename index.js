@@ -4,7 +4,7 @@ const Stream = require('stream').Transform
 const fs = require('fs')
 
 require('dotenv').config()
-const token = process.env.TOKEN
+const token = process.env.TOKEN || console.error('Please provide API token in .env') || process.exit(1)
 
 const cliProgress = require('cli-progress')
 const inquirer = require('inquirer')
