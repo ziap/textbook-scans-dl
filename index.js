@@ -2,6 +2,7 @@ const fetch = require('node-fetch')
 const https = require('https')
 const Stream = require('stream').Transform
 const fs = require('fs')
+const PDFDocument = require('pdfkit')
 
 require('dotenv').config()
 const token = process.env.TOKEN || console.error('Please provide API token in .env') || process.exit(1)
@@ -68,12 +69,22 @@ async function getPages(bookID) {
             `books/${data.slug}/${i}.png`
         )
         bar.increment(1)
-        if (!result) {
-            console.error('Download failed!')
-            break
-        }
+        if (!result) throw new Error('Download failed')
     }
     bar.stop()
+
+    console.log('Chuyển đổi sang pdf')
+    const doc = new PDFDocument({ autoFirstPage: false })
+    doc.pipe(fs.createWriteStream(`books/${data.slug}.pdf`))
+
+    for (let i = 1; i < data.totalPage; i++) {
+        const img = doc.openImage(`./books/${data.slug}/${i}.png`)
+        doc.addPage({ size: [img.width, img.height] })
+        doc.image(img, 0, 0)
+    }
+    doc.end()
+
+    fs.rmdirSync(`books/${data.slug}`, { recursive: true })
 }
 
 async function getBooks(classList) {
@@ -116,7 +127,7 @@ async function getBooks(classList) {
         try {
             await getPages(bookMap[book])
         } catch {
-            console.error(`Không thể tải ${book.name}`)
+            console.error(`Không thể tải ${book}`)
         }
     }
 }
