@@ -84,7 +84,7 @@ async function getPages(bookID) {
     }
     doc.end()
 
-    fs.rmdirSync(`books/${data.slug}`, { recursive: true })
+    fs.rmSync(`books/${data.slug}`, { recursive: true })
 }
 
 async function getBooks(classList) {
