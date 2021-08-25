@@ -1,0 +1,17 @@
+{
+  "name": "textbook-scans-dl",
+  "version": "1.0.0",
+  "description": "Steal textbook from moet website",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Zap",
+  "license": "MIT",
+  "dependencies": {
+    "cli-progress": "^3.9.0",
+    "dotenv": "^10.0.0",
+    "inquirer": "^8.1.2",
+    "node-fetch": "^2.6.1"
+  }
+}
