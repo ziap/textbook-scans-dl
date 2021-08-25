@@ -1,6 +1,4 @@
 const fetch = require('node-fetch')
-const https = require('https')
-const Stream = require('stream').Transform
 const fs = require('fs')
 const PDFDocument = require('pdfkit')
 
@@ -11,29 +9,6 @@ const cliProgress = require('cli-progress')
 const inquirer = require('inquirer')
 
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0'
-
-function download(url, filename) {
-    return new Promise(resolve => {
-        try {
-            https
-                .request(url, response => {
-                    var data = new Stream()
-
-                    response.on('data', function (chunk) {
-                        data.push(chunk)
-                    })
-
-                    response.on('end', function () {
-                        fs.writeFileSync(filename, data.read())
-                        resolve(true)
-                    })
-                })
-                .end()
-        } catch {
-            resolve(false)
-        }
-    })
-}
 
 async function getPages(bookID) {
     const res = await fetch(`https://apihanhtrangso.nxbgd.vn/api/book/${bookID}`, {
@@ -57,34 +32,23 @@ async function getPages(bookID) {
     })
     const { data } = await res.json()
 
-    if (!fs.existsSync('books/' + data.slug)) fs.mkdirSync('books/' + data.slug)
-
     const bar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic)
     console.log(`Đang tải ${data.name}`)
     bar.start(data.totalPage, 1)
 
-    for (let i = 1; i < data.totalPage; i++) {
-        const result = await download(
-            'https://cdnelearning.nxbgd.vn/uploads/books/' + data.fileName + `-${i}.jpg`,
-            `books/${data.slug}/${i}.png`
-        )
-        bar.increment(1)
-        if (!result) throw new Error('Download failed')
-    }
-    bar.stop()
-
-    console.log('Chuyển đổi sang pdf')
     const doc = new PDFDocument({ autoFirstPage: false })
     doc.pipe(fs.createWriteStream(`books/${data.slug}.pdf`))
 
     for (let i = 1; i < data.totalPage; i++) {
-        const img = doc.openImage(`./books/${data.slug}/${i}.png`)
+        const buffer = await (await fetch('https://cdnelearning.nxbgd.vn/uploads/books/' + data.fileName + `-${i}.jpg`)).buffer()
+        const img = doc.openImage(buffer)
         doc.addPage({ size: [img.width, img.height] })
         doc.image(img, 0, 0)
+        bar.increment(1)
     }
-    doc.end()
+    bar.stop()
 
-    fs.rmSync(`books/${data.slug}`, { recursive: true })
+    doc.end()
 }
 
 async function getBooks(classList) {
