@@ -171,4 +171,5 @@ async function getClasses() {
     getBooks(Array.from(ans.class, x => classMap[x]))
 }
 
+if (!fs.existsSync('books')) fs.mkdirSync('books')
 getClasses()
