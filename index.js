@@ -1,14 +1,18 @@
 const fetch = require('node-fetch')
 const fs = require('fs')
 const PDFDocument = require('pdfkit')
+const https = require('https')
+
+const httpsAgent = new https.Agent({
+    rejectUnauthorized: false
+})
 
 require('dotenv').config()
+
 const token = process.env.TOKEN || console.error('Please provide API token in .env') || process.exit(1)
 
-const cliProgress = require('cli-progress')
+const progress = require('./progress')
 const inquirer = require('inquirer')
-
-process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0'
 
 async function getPages(bookID) {
     const res = await fetch(`https://apihanhtrangso.nxbgd.vn/api/book/${bookID}`, {
@@ -32,21 +36,25 @@ async function getPages(bookID) {
     })
     const { data } = await res.json()
 
-    const bar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic)
-    console.log(`Đang tải ${data.name}`)
+    const bar = new progress('trang')
+    console.log(`Đang tải ${data.className}/${data.name}`)
     bar.start(data.totalPage, 1)
 
     const doc = new PDFDocument({ autoFirstPage: false })
-    doc.pipe(fs.createWriteStream(`books/${data.slug}.pdf`))
+    if (!fs.existsSync(`books/${data.className}`)) fs.mkdirSync(`books/${data.className}`)
+    doc.pipe(fs.createWriteStream(`books/${data.className}/${data.name}.pdf`))
 
     for (let i = 1; i < data.totalPage; i++) {
-        const buffer = await (await fetch('https://cdnelearning.nxbgd.vn/uploads/books/' + data.fileName + `-${i}.jpg`)).buffer()
+        const buffer = await (
+            await fetch('https://cdnelearning.nxbgd.vn/uploads/books/' + data.fileName + `-${i}.jpg`, {
+                agent: httpsAgent
+            })
+        ).buffer()
         const img = doc.openImage(buffer)
         doc.addPage({ size: [img.width, img.height] })
         doc.image(img, 0, 0)
-        bar.increment(1)
+        bar.increase(1)
     }
-    bar.stop()
 
     doc.end()
 }
@@ -93,6 +101,7 @@ async function getBooks(classList) {
         } catch {
             console.error(`Không thể tải ${book}`)
         }
+        console.log('')
     }
 }
 
